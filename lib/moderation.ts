@@ -41,7 +41,7 @@ export function moderateText(
     return {
       isSafe: false,
       reason: max_key || "policy_violation",
-      message: "Content flagged by moderation system",
+      message: "Comment flagged by moderation system",
     };
   }
 

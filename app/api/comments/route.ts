@@ -50,7 +50,6 @@ export async function POST(req: NextRequest) {
     });
 
     const moderationResult = moderateText(JSON.parse(toxicity.data[1].toString()));
-    console.log("---------------", moderationResult);
 
     if (!moderationResult.isSafe) {
       return NextResponse.json(
