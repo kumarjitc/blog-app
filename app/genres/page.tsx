@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import MoviePoster from "./MoviePoster";
 
@@ -20,21 +20,29 @@ interface Movie {
 export default function GenresPage() {
   const [genres, setGenres] = useState<GenreCount[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+
+  const [actor, setActor] = useState("");
+  const [actorSuggestions, setActorSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const [language, setLanguage] = useState("");
+
   const [movies, setMovies] = useState<Movie[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
   const limit = 20;
+  const suggestionRef = useRef<HTMLDivElement>(null);
 
-  // Fetch genres
+  /* ---------------- Fetch genres ---------------- */
   useEffect(() => {
     fetch("/api/genres")
       .then(res => res.json())
       .then(setGenres);
   }, []);
 
-  // Fetch movies when genre changes
+  /* ---------------- Fetch movies when filters change ---------------- */
   useEffect(() => {
     if (!selectedGenre) return;
 
@@ -42,64 +50,93 @@ export default function GenresPage() {
     setPage(1);
     setHasMore(true);
 
-    const loadMovies = async () => {
-      setLoading(true);
-      const res = await fetch(
-        `/api/movies?genre=${encodeURIComponent(selectedGenre)}&page=1`
-      );
-      const data = await res.json();
-      setMovies(data.movies);
-      setHasMore(data.movies.length === limit);
-      setLoading(false);
-    };
+    loadMovies(1, true);
+  }, [selectedGenre, actor, language]);
 
-    loadMovies();
-  }, [selectedGenre]);
-
-  // Infinite scroll
+  /* ---------------- Infinite scroll ---------------- */
   useEffect(() => {
     const handleScroll = () => {
       if (!selectedGenre || loading || !hasMore) return;
 
-      const bottom =
+      const bottomReached =
         window.innerHeight + window.scrollY >=
         document.documentElement.scrollHeight - 200;
 
-      if (bottom) loadMore();
+      if (bottomReached) loadMore();
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [selectedGenre, loading, hasMore, page]);
 
-  const loadMore = async () => {
-    if (!selectedGenre) return;
+  /* ---------------- Actor Suggestions ---------------- */
+  useEffect(() => {
+    if (!actor) return setActorSuggestions([]);
 
+    const timer = setTimeout(async () => {
+      const res = await fetch(`/api/actors?query=${encodeURIComponent(actor)}`);
+      const data = await res.json();
+      setActorSuggestions(data.actors || []);
+      setShowSuggestions(true);
+    }, 300); // debounce
+
+    return () => clearTimeout(timer);
+  }, [actor]);
+
+  /* Close suggestions if clicked outside */
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (suggestionRef.current && !suggestionRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  /* ---------------- API calls ---------------- */
+  const buildQuery = (pageNum: number) => {
+    const params = new URLSearchParams({
+      genre: selectedGenre!,
+      page: pageNum.toString(),
+    });
+
+    if (actor) params.append("actor", actor);
+    if (language) params.append("language", language);
+
+    return `/api/movies?${params.toString()}`;
+  };
+
+  const loadMovies = async (pageNum: number, reset = false) => {
     setLoading(true);
-    const nextPage = page + 1;
 
-    const res = await fetch(
-      `/api/movies?genre=${encodeURIComponent(selectedGenre)}&page=${nextPage}`
-    );
+    const res = await fetch(buildQuery(pageNum));
     const data = await res.json();
 
-    setMovies(prev => [...prev, ...data.movies]);
-    setPage(nextPage);
+    setMovies(prev => (reset ? data.movies : [...prev, ...data.movies]));
     setHasMore(data.movies.length === limit);
+    setPage(pageNum + 1);
+
     setLoading(false);
   };
+
+  const loadMore = () => loadMovies(page);
 
   return (
     <main className="p-8">
       <h1 className="text-3xl font-bold mb-2">Search and Review Movies</h1>
       <h2 className="text-xl font-semibold mb-6 text-gray-600">By Genres</h2>
 
-      {/* Genre Pills */}
-      <div className="flex flex-wrap gap-3 mb-8">
+      {/* ---------------- Genre Pills ---------------- */}
+      <div className="flex flex-wrap gap-3 mb-6">
         {genres.map(g => (
           <button
             key={g.genre}
-            onClick={() => setSelectedGenre(g.genre)}
+            onClick={() => {
+              setSelectedGenre(g.genre);
+              setActor("");
+              setLanguage("");
+            }}
             className={`px-4 py-2 rounded-full font-medium transition
               ${
                 selectedGenre === g.genre
@@ -115,7 +152,54 @@ export default function GenresPage() {
         ))}
       </div>
 
-      {/* Movies */}
+      {/* ---------------- Filters ---------------- */}
+      {selectedGenre && (
+        <div className="flex flex-wrap gap-4 mb-8 relative" ref={suggestionRef}>
+          {/* Actor suggestion box */}
+          <div className="w-64 relative">
+            <input
+              type="text"
+              placeholder="Filter by actor"
+              value={actor}
+              onChange={e => setActor(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              className="px-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+            {showSuggestions && actorSuggestions.length > 0 && (
+              <ul className="absolute top-full left-0 right-0 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                {actorSuggestions.map(a => (
+                  <li
+                    key={a}
+                    className="px-4 py-2 cursor-pointer hover:bg-green-100"
+                    onClick={() => {
+                      setActor(a);
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    {a}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Language dropdown */}
+          <select
+            value={language}
+            onChange={e => setLanguage(e.target.value)}
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+          >
+            <option value="">All Languages</option>
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="French">French</option>
+            <option value="Spanish">Spanish</option>
+            <option value="Japanese">Japanese</option>
+          </select>
+        </div>
+      )}
+
+      {/* ---------------- Movies ---------------- */}
       {selectedGenre && (
         <>
           <h3 className="text-2xl font-bold mb-4">
@@ -132,13 +216,8 @@ export default function GenresPage() {
                   href={`/movies/${movie._id}`}
                   className="relative"
                 >
-                  {/* Comment pill */}
                   {movie.commentCount > 0 && (
-                    <span
-                      className="absolute top-2 right-2 z-10
-                                 bg-red-600 text-white text-xs
-                                 px-2 py-1 rounded-full shadow"
-                    >
+                    <span className="absolute top-2 right-2 z-10 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">
                       💬 {movie.commentCount}
                     </span>
                   )}

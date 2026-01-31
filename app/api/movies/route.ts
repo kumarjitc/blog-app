@@ -1,59 +1,75 @@
-import clientPromise from "@/lib/mongodb";
 import { NextRequest, NextResponse } from "next/server";
+import clientPromise from "@/lib/mongodb";
+
+const PAGE_SIZE = 20;
 
 export async function GET(req: NextRequest) {
-  const genre = req.nextUrl.searchParams.get("genre");
-  const page = parseInt(req.nextUrl.searchParams.get("page") || "1", 10);
-  const limit = 20;
-  const skip = (page - 1) * limit;
+  const { searchParams } = req.nextUrl;
 
-  if (!genre) return NextResponse.json({ movies: [] });
+  const genre = searchParams.get("genre");
+  const actor = searchParams.get("actor");
+  const language = searchParams.get("language");
+  const page = parseInt(searchParams.get("page") || "1", 10);
+
+  if (!genre) {
+    return NextResponse.json({ movies: [] });
+  }
 
   const client = await clientPromise;
   const db = client.db("sample_mflix");
 
-  const pipeline = [
-    { $match: { genres: genre } },
+  /* ---------------- Build filter ---------------- */
+  const filter: any = {
+    genres: genre,
+  };
 
-    // Remove duplicates by poster/title
-    {
-      $group: {
-        _id: { poster: "$poster", title: "$title" },
-        doc: { $first: "$$ROOT" },
+  if (actor) {
+    filter.cast = { $regex: actor, $options: "i" };
+  }
+
+  if (language) {
+    filter.languages = language;
+  }
+
+  /* ---------------- Aggregation ---------------- */
+  const movies = await db
+    .collection("movies")
+    .aggregate([
+      { $match: filter },
+
+      { $sort: { year: -1 } },
+
+      { $skip: (page - 1) * PAGE_SIZE },
+      { $limit: PAGE_SIZE },
+
+      /* Join comments to count */
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "movie_id",
+          as: "comments",
+        },
       },
-    },
-    { $replaceRoot: { newRoot: "$doc" } },
 
-    // Lookup comments
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "movie_id",
-        as: "comments",
+      {
+        $project: {
+          title: 1,
+          poster: 1,
+          imdb: 1,
+          commentCount: { $size: "$comments" },
+        },
       },
-    },
+    ])
+    .toArray();
 
-    // Add comment count
-    {
-      $addFields: {
-        commentCount: { $size: "$comments" },
-      },
-    },
-
-    { $project: { title: 1, poster: 1, commentCount: 1 } },
-    { $skip: skip },
-    { $limit: limit },
-  ];
-
-  const moviesRaw = await db.collection("movies").aggregate(pipeline).toArray();
-
-  const movies = moviesRaw.map(m => ({
-    _id: m._id.toString(),
-    title: m.title,
-    poster: m.poster,
-    commentCount: m.commentCount ?? 0,
-  }));
-
-  return NextResponse.json({ movies });
+  return NextResponse.json({
+    movies: movies.map(m => ({
+      _id: m._id.toString(),
+      title: m.title,
+      poster: m.poster,
+      imdb: m.imdb,
+      commentCount: m.commentCount,
+    })),
+  });
 }
