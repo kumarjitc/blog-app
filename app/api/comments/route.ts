@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { Client } from "@gradio/client";
-import { moderateText } from "@/lib/moderation";
+import { moderateText, type ModerationResponse } from "@/lib/moderation";
 
 export async function GET(req: NextRequest) {
   const movieId = req.nextUrl.searchParams.get("movieId");
@@ -32,9 +32,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
+interface PostCommentBody {
+  movieId?: string;
+  name?: string;
+  text?: string;
+}
+
+interface GradioPredictResponse {
+  data: unknown[];
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { movieId, name, text } = await req.json();
+    const body = (await req.json()) as PostCommentBody;
+    const { movieId, name, text } = body;
 
     if (!movieId || !text) {
       return NextResponse.json(
@@ -44,12 +55,16 @@ export async function POST(req: NextRequest) {
     }
 
     const guardrails = await Client.connect("duchaba/Friendly_Text_Moderation");
-    const toxicity: any = await guardrails.predict("/fetch_toxicity_level", { 		
-            msg: text, 		
-            safer: 0.005, 
-    });
+    const toxicity = (await guardrails.predict("/fetch_toxicity_level", {
+      msg: text,
+      safer: 0.005,
+    })) as GradioPredictResponse;
 
-    const moderationResult = moderateText(JSON.parse(toxicity.data[1].toString()));
+    const rawModeration = toxicity.data[1];
+    const parsed = JSON.parse(
+      typeof rawModeration === "string" ? rawModeration : String(rawModeration)
+    ) as ModerationResponse;
+    const moderationResult = moderateText(parsed);
 
     if (!moderationResult.isSafe) {
       return NextResponse.json(

@@ -1,63 +1,55 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b border-border/50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <span className="font-display font-bold text-xl tracking-tight text-foreground">
+            Reel
+          </span>
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/genres"
+              className="text-sm font-medium text-muted hover:text-foreground transition-colors"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Browse
+            </Link>
+          </nav>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+        <div className="max-w-2xl text-center">
+          <h1 className="font-display text-5xl sm:text-6xl font-extrabold tracking-tight text-foreground mb-4">
+            Discover &amp; Review Movies
+          </h1>
+          <p className="text-lg text-muted mb-10 leading-relaxed">
+            Pick a genre, explore films, and share your thoughts. Comments are
+            checked by AI moderation before they’re posted.
+          </p>
+          <Link
+            href="/genres"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-semibold bg-accent text-black hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Browse by Genre
+            <span className="text-lg" aria-hidden>→</span>
+          </Link>
+        </div>
+
+        <div className="mt-24 grid grid-cols-3 gap-8 max-w-lg text-center text-muted text-sm">
+          <div>
+            <span className="block font-display font-semibold text-foreground text-base mb-1">Genres</span>
+            Pick from Action, Drama, Comedy &amp; more
+          </div>
+          <div>
+            <span className="block font-display font-semibold text-foreground text-base mb-1">Details</span>
+            Posters, cast, plot &amp; IMDB ratings
+          </div>
+          <div>
+            <span className="block font-display font-semibold text-foreground text-base mb-1">Comments</span>
+            AI-moderated, so discussions stay civil
+          </div>
         </div>
       </main>
     </div>

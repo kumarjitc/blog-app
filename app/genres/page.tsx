@@ -10,7 +10,7 @@ interface GenreCount {
 }
 
 interface Movie {
-  imdb: any;
+  imdb?: { rating?: number; votes?: number };
   _id: string;
   title: string;
   poster?: string;
@@ -20,6 +20,9 @@ interface Movie {
 export default function GenresPage() {
   const [genres, setGenres] = useState<GenreCount[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+
+  /** 5-year range: "" = all, "2020" = 2020-2024, "2015" = 2015-2019, etc. */
+  const [yearRange, setYearRange] = useState("");
 
   const [actor, setActor] = useState("");
   const [actorSuggestions, setActorSuggestions] = useState<string[]>([]);
@@ -35,55 +38,46 @@ export default function GenresPage() {
   const limit = 20;
   const suggestionRef = useRef<HTMLDivElement>(null);
 
-  /* ---------------- Fetch genres ---------------- */
   useEffect(() => {
-    fetch("/api/genres")
+    const url = yearRange
+      ? `/api/genres?yearFrom=${yearRange}&yearTo=${Number(yearRange) + 4}`
+      : "/api/genres";
+    fetch(url)
       .then(res => res.json())
       .then(setGenres);
-  }, []);
+  }, [yearRange]);
 
-  /* ---------------- Fetch movies when filters change ---------------- */
   useEffect(() => {
     if (!selectedGenre) return;
-
     setMovies([]);
     setPage(1);
     setHasMore(true);
-
     loadMovies(1, true);
-  }, [selectedGenre, actor, language]);
+  }, [selectedGenre, yearRange, actor, language]);
 
-  /* ---------------- Infinite scroll ---------------- */
   useEffect(() => {
     const handleScroll = () => {
       if (!selectedGenre || loading || !hasMore) return;
-
       const bottomReached =
         window.innerHeight + window.scrollY >=
         document.documentElement.scrollHeight - 200;
-
       if (bottomReached) loadMore();
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [selectedGenre, loading, hasMore, page]);
 
-  /* ---------------- Actor Suggestions ---------------- */
   useEffect(() => {
     if (!actor) return setActorSuggestions([]);
-
     const timer = setTimeout(async () => {
       const res = await fetch(`/api/actors?query=${encodeURIComponent(actor)}`);
       const data = await res.json();
       setActorSuggestions(data.actors || []);
       setShowSuggestions(true);
-    }, 300); // debounce
-
+    }, 300);
     return () => clearTimeout(timer);
   }, [actor]);
 
-  /* Close suggestions if clicked outside */
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (suggestionRef.current && !suggestionRef.current.contains(e.target as Node)) {
@@ -94,157 +88,192 @@ export default function GenresPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* ---------------- API calls ---------------- */
   const buildQuery = (pageNum: number) => {
     const params = new URLSearchParams({
       genre: selectedGenre!,
       page: pageNum.toString(),
     });
-
+    if (yearRange) {
+      params.append("yearFrom", yearRange);
+      params.append("yearTo", String(Number(yearRange) + 4));
+    }
     if (actor) params.append("actor", actor);
     if (language) params.append("language", language);
-
     return `/api/movies?${params.toString()}`;
   };
 
   const loadMovies = async (pageNum: number, reset = false) => {
     setLoading(true);
-
     const res = await fetch(buildQuery(pageNum));
     const data = await res.json();
-
     setMovies(prev => (reset ? data.movies : [...prev, ...data.movies]));
     setHasMore(data.movies.length === limit);
     setPage(pageNum + 1);
-
     setLoading(false);
   };
 
   const loadMore = () => loadMovies(page);
 
   return (
-    <main className="p-8">
-      <h2 className="text-3xl font-bold mb-2">Search and Review Movies</h2>
-      <h2 className="text-2xl font-bold mb-2">Click on any movie poster and add comments in the movie details page. Comments will be checked by AI and if the comment pass HuggingFace/TextModerator check it will be added to DB, else will be rejected</h2>
-      <h3 className="text-xl font-semibold mb-6 text-gray-600">By Genres</h3>
-
-      {/* ---------------- Genre Pills ---------------- */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {genres.map(g => (
-          <button
-            key={g.genre}
-            onClick={() => {
-              setSelectedGenre(g.genre);
-              setActor("");
-              setLanguage("");
-            }}
-            className={`px-4 py-2 rounded-full font-medium transition
-              ${
-                selectedGenre === g.genre
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-200 text-gray-800 hover:bg-green-400 hover:text-white"
-              }`}
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link
+            href="/"
+            className="font-display font-bold text-xl tracking-tight text-foreground hover:text-accent transition-colors"
           >
-            {g.genre}
-            <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
-              {g.count}
-            </span>
-          </button>
-        ))}
-      </div>
+            Reel
+          </Link>
+          <nav className="flex items-center gap-6">
+            <span className="text-sm font-medium text-accent">Browse</span>
+          </nav>
+        </div>
+      </header>
 
-      {/* ---------------- Filters ---------------- */}
-      {selectedGenre && (
-        <div className="flex flex-wrap gap-4 mb-8 relative" ref={suggestionRef}>
-          {/* Actor suggestion box */}
-          <div className="w-64 relative">
-            <input
-              type="text"
-              placeholder="Filter by actor"
-              value={actor}
-              onChange={e => setActor(e.target.value)}
-              onFocus={() => setShowSuggestions(true)}
-              className="px-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
-            {showSuggestions && actorSuggestions.length > 0 && (
-              <ul className="absolute top-full left-0 right-0 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
-                {actorSuggestions.map(a => (
-                  <li
-                    key={a}
-                    className="px-4 py-2 cursor-pointer hover:bg-green-100"
-                    onClick={() => {
-                      setActor(a);
-                      setShowSuggestions(false);
-                    }}
-                  >
-                    {a}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+      <main className="max-w-6xl mx-auto px-6 py-10">
+        <div className="mb-8">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
+            Search &amp; Review
+          </h1>
+          <p className="text-muted max-w-2xl">
+            Choose a genre, then click a poster to see details and add comments. Comments are checked by AI before they’re saved.
+          </p>
+        </div>
 
-          {/* Language dropdown */}
+        {/* 1. 5-year range filter (also filters genre counts) */}
+        <p className="font-display font-semibold text-foreground mb-2">Year range</p>
+        <div className="flex flex-wrap gap-4 mb-6">
           <select
-            value={language}
-            onChange={e => setLanguage(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+            value={yearRange}
+            onChange={e => setYearRange(e.target.value)}
+            className="px-4 py-2.5 rounded-xl bg-surface border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition min-w-[10rem]"
           >
-            <option value="">All Languages</option>
-            <option value="English">English</option>
-            <option value="Hindi">Hindi</option>
-            <option value="French">French</option>
-            <option value="Spanish">Spanish</option>
-            <option value="Japanese">Japanese</option>
+            <option value="">All years</option>
+            {Array.from({ length: 20 }, (_, i) => 2020 - i * 5).map(start => (
+              <option key={start} value={start}>
+                {start}–{start + 4}
+              </option>
+            ))}
           </select>
         </div>
-      )}
 
-      {/* ---------------- Movies ---------------- */}
-      {selectedGenre && (
-        <>
-          <h3 className="text-2xl font-bold mb-4">
-            Movies in {selectedGenre}
-          </h3>
+        {/* 2. Genre filter */}
+        <p className="font-display font-semibold text-foreground mb-4">Genre</p>
+        <div className="flex flex-wrap gap-2 mb-8">
+          {genres.map(g => (
+            <button
+              key={g.genre}
+              onClick={() => {
+                setSelectedGenre(g.genre);
+                setActor("");
+                setLanguage("");
+              }}
+              className={`
+                px-4 py-2 rounded-full font-medium text-sm transition-all
+                ${selectedGenre === g.genre
+                  ? "bg-accent text-black shadow-lg shadow-accent/25"
+                  : "bg-surface text-muted hover:bg-surface-hover hover:text-foreground border border-border"
+                }
+              `}
+            >
+              {g.genre}
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${selectedGenre === g.genre ? "bg-black/20" : "bg-accent/20 text-accent"}`}>
+                {g.count}
+              </span>
+            </button>
+          ))}
+        </div>
 
-          {movies.length === 0 && !loading ? (
-            <p>No movies found.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
-              {movies.map(movie => (
-                <Link
-                  key={movie._id}
-                  href={`/movies/${movie._id}`}
-                  className="relative"
-                >
-                  {movie.commentCount > 0 && (
-                    <span className="absolute top-2 right-2 z-10 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">
-                      💬 {movie.commentCount}
-                    </span>
-                  )}
-
-                  <MoviePoster
-                    title={movie.title}
-                    poster={movie.poster}
-                    genre={selectedGenre}
-                    rating={movie.imdb?.rating}
-                  />
-                </Link>
-              ))}
+        {selectedGenre && (
+          <div className="flex flex-wrap gap-4 mb-8 relative" ref={suggestionRef}>
+            <div className="w-56 relative">
+              <input
+                type="text"
+                placeholder="Filter by actor"
+                value={actor}
+                onChange={e => setActor(e.target.value)}
+                onFocus={() => setShowSuggestions(true)}
+                className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition"
+              />
+              {showSuggestions && actorSuggestions.length > 0 && (
+                <ul className="absolute top-full left-0 right-0 mt-1 py-1 rounded-xl bg-card border border-border shadow-xl max-h-48 overflow-y-auto z-50">
+                  {actorSuggestions.map(a => (
+                    <li
+                      key={a}
+                      className="px-4 py-2.5 cursor-pointer text-foreground hover:bg-accent-muted transition"
+                      onClick={() => {
+                        setActor(a);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      {a}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          )}
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="px-4 py-2.5 rounded-xl bg-surface border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition"
+            >
+              <option value="">All languages</option>
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+              <option value="French">French</option>
+              <option value="Spanish">Spanish</option>
+              <option value="Japanese">Japanese</option>
+            </select>
+          </div>
+        )}
 
-          {loading && (
-            <p className="text-center mt-6 text-gray-500">Loading…</p>
-          )}
+        {selectedGenre && (
+          <>
+            <h2 className="font-display text-2xl font-bold text-foreground mb-6">
+              {selectedGenre}
+            </h2>
 
-          {!hasMore && movies.length > 0 && (
-            <p className="text-center mt-6 text-gray-400">
-              No more movies
-            </p>
-          )}
-        </>
-      )}
-    </main>
+            {movies.length === 0 && !loading ? (
+              <p className="text-muted py-12">No movies found.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                {movies.map(movie => (
+                  <Link
+                    key={movie._id}
+                    href={`/movies/${movie._id}`}
+                    className="relative group"
+                  >
+                    {movie.commentCount > 0 && (
+                      <span className="absolute top-2 right-2 z-20 px-2 py-1 rounded-full bg-accent text-black text-xs font-semibold shadow">
+                        💬 {movie.commentCount}
+                      </span>
+                    )}
+                    <MoviePoster
+                      title={movie.title}
+                      poster={movie.poster}
+                      genre={selectedGenre}
+                      rating={movie.imdb?.rating}
+                    />
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex justify-center py-12">
+                <div
+                  className="h-10 w-10 rounded-full border-2 border-border border-t-accent animate-spin"
+                  aria-label="Loading more movies"
+                />
+              </div>
+            )}
+
+            {!hasMore && movies.length > 0 && (
+              <p className="text-center py-12 text-muted">No more movies</p>
+            )}
+          </>
+        )}
+      </main>
+    </div>
   );
 }

@@ -38,38 +38,46 @@ export default function CommentSection({ movieId }: Props) {
   }, [movieId]);
 
   const handleSuccess = () => {
-    setSuccess("Comment posted successfully!");
+    setSuccess("Comment posted successfully.");
     fetchComments();
   };
 
   return (
-    <div className="mt-6">
-      <h2 className="text-xl font-semibold mb-3">Comments</h2>
-
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="mb-4 px-4 py-2 rounded bg-green-600 hover:bg-green-500 text-white"
-      >
-        Add Comment
-      </button>
+    <div>
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <h2 className="font-display text-xl font-semibold text-foreground">
+          Comments
+        </h2>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="px-5 py-2.5 rounded-full font-semibold bg-accent text-black hover:bg-accent-hover transition-colors shadow-lg shadow-accent/20"
+        >
+          Add comment
+        </button>
+      </div>
 
       {success && (
-        <div className="bg-green-600/20 border border-green-500 text-green-300 px-3 py-2 rounded mb-2">
+        <div className="mb-4 px-4 py-3 rounded-xl bg-accent-muted border border-accent/30 text-accent">
           {success}
         </div>
       )}
 
       {loading ? (
-        <p>Loading comments...</p>
+        <p className="text-muted py-6">Loading comments…</p>
       ) : comments.length === 0 ? (
-        <p>No comments yet.</p>
+        <p className="text-muted py-6">No comments yet. Be the first.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {comments.map(c => (
-            <li key={c._id} className="border border-gray-700 p-3 rounded bg-gray-800">
-              <p className="font-semibold">{c.name}</p>
-              <p className="text-gray-300">{c.text}</p>
-              <p className="text-gray-500 text-sm">{new Date(c.date).toLocaleString()}</p>
+            <li
+              key={c._id}
+              className="p-5 rounded-xl bg-card border border-border"
+            >
+              <p className="font-semibold text-foreground">{c.name || "Anonymous"}</p>
+              <p className="text-foreground mt-1 leading-relaxed">{c.text}</p>
+              <p className="text-muted text-sm mt-2">
+                {new Date(c.date).toLocaleString()}
+              </p>
             </li>
           ))}
         </ul>

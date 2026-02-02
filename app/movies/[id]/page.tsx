@@ -1,7 +1,8 @@
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import CommentSection from "./CommentSection"; // client component
+import CommentSection from "./CommentSection";
 import BackToGenres from "./BackToGenres";
+import PosterImage from "./PosterImage";
 
 interface Movie {
   _id: ObjectId;
@@ -33,58 +34,131 @@ export default async function MovieDetailsPage({ params }: PageProps) {
   const client = await clientPromise;
   const db = client.db("sample_mflix");
 
-  let movie: any | null = null;
+  let movie: Movie | null = null;
 
   try {
-    movie = await db.collection("movies").findOne({ _id: new ObjectId(id) });
+    movie = await db.collection<Movie>("movies").findOne({ _id: new ObjectId(id) });
   } catch (err) {
     console.error("Invalid ObjectId:", err);
   }
 
-  if (!movie) return <p className="p-8">Movie not found</p>;
+  if (!movie) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <p className="text-muted text-lg">Movie not found.</p>
+      </div>
+    );
+  }
 
   return (
-    <main className="p-8">
-      <BackToGenres /> {/* ← Added back button */}
-      <h2 className="text-3xl font-bold mb-2">Movie Details and Add Comments</h2>
-      <h2 className="text-2xl font-bold mb-2">Add comments to the movie. Comments will be checked by AI and if the comment pass HuggingFace/TextModerator check it will be added to DB, else will be rejected</h2>
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Poster */}
-        {movie.poster ? (
-          <img
-            src={movie.poster}
-            alt={movie.title}
-            className="w-full md:w-64 h-auto object-cover rounded"
-          />
-        ) : (
-          <div className="w-full md:w-64 h-64 bg-gray-200 flex items-center justify-center rounded text-gray-800 font-bold">
-            {movie.title}
-          </div>
-        )}
-
-        {/* Movie Info */}
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold mb-2">{movie.title}</h1>
-          {movie.year && <p><strong>Year:</strong> {movie.year}</p>}
-          {movie.type && <p><strong>Type:</strong> {movie.type}</p>}
-          {movie.runtime && <p><strong>Runtime:</strong> {movie.runtime} min</p>}
-          {movie.director && <p><strong>Director:</strong> {movie.director}</p>}
-          {movie.cast && movie.cast.length > 0 && <p><strong>Cast:</strong> {movie.cast.join(", ")}</p>}
-          {movie.genres && <p><strong>Genres:</strong> {movie.genres.join(", ")}</p>}
-          {movie.countries && <p><strong>Countries:</strong> {movie.countries.join(", ")}</p>}
-          {movie.languages && <p><strong>Languages:</strong> {movie.languages.join(", ")}</p>}
-          {movie.released && <p><strong>Released:</strong> {new Date(movie.released).toDateString()}</p>}
-          {movie.imdb?.rating && <p><strong>IMDB Rating:</strong> {movie.imdb.rating}</p>}
-          {movie.imdb?.votes && <p><strong>IMDB Votes:</strong> {movie.imdb.votes}</p>}
-          {movie.plot && <p className="mt-4"><strong>Plot:</strong> {movie.plot}</p>}
-          {movie.fullplot && <p className="mt-2"><strong>Full Plot:</strong> {movie.fullplot}</p>}
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <BackToGenres />
+          <a
+            href="/"
+            className="font-display font-bold text-xl tracking-tight text-foreground hover:text-accent transition-colors"
+          >
+            Reel
+          </a>
         </div>
-      </div>
+      </header>
 
-      {/* Comments Section */}
-      <div className="mt-8">
-        <CommentSection movieId={movie._id.toString()} />
-      </div>
-    </main>
+      <main className="max-w-5xl mx-auto px-6 py-10">
+        <div className="flex flex-col md:flex-row gap-10">
+          <div className="flex-shrink-0">
+            <PosterImage poster={movie.poster} title={movie.title} />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
+              {movie.title}
+            </h1>
+            <p className="text-muted mb-6">
+              Add a comment below. Comments are checked by AI before they’re saved.
+            </p>
+
+            <dl className="grid gap-3 text-sm">
+              {movie.year && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Year</dt>
+                  <dd className="text-foreground">{movie.year}</dd>
+                </div>
+              )}
+              {movie.type && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Type</dt>
+                  <dd className="text-foreground">{movie.type}</dd>
+                </div>
+              )}
+              {movie.runtime && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Runtime</dt>
+                  <dd className="text-foreground">{movie.runtime} min</dd>
+                </div>
+              )}
+              {movie.director && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Director</dt>
+                  <dd className="text-foreground">{movie.director}</dd>
+                </div>
+              )}
+              {movie.cast && movie.cast.length > 0 && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Cast</dt>
+                  <dd className="text-foreground">{movie.cast.join(", ")}</dd>
+                </div>
+              )}
+              {movie.genres && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Genres</dt>
+                  <dd className="text-foreground">{movie.genres.join(", ")}</dd>
+                </div>
+              )}
+              {movie.countries && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Countries</dt>
+                  <dd className="text-foreground">{movie.countries.join(", ")}</dd>
+                </div>
+              )}
+              {movie.languages && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Languages</dt>
+                  <dd className="text-foreground">{movie.languages.join(", ")}</dd>
+                </div>
+              )}
+              {movie.released && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">Released</dt>
+                  <dd className="text-foreground">{new Date(movie.released).toDateString()}</dd>
+                </div>
+              )}
+              {movie.imdb?.rating != null && (
+                <div className="flex gap-3">
+                  <dt className="text-muted w-24 flex-shrink-0">IMDB</dt>
+                  <dd className="text-foreground">
+                    ⭐ {movie.imdb.rating.toFixed(1)}
+                    {movie.imdb.votes != null && (
+                      <span className="text-muted ml-2">({movie.imdb.votes.toLocaleString()} votes)</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+            </dl>
+
+            {movie.plot && (
+              <p className="mt-6 text-foreground leading-relaxed">{movie.plot}</p>
+            )}
+            {movie.fullplot && movie.fullplot !== movie.plot && (
+              <p className="mt-4 text-muted text-sm leading-relaxed">{movie.fullplot}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-12 pt-10 border-t border-border">
+          <CommentSection movieId={movie._id.toString()} />
+        </div>
+      </main>
+    </div>
   );
 }
