@@ -124,8 +124,9 @@ export default function GenresPage() {
 
   return (
     <main className="p-8">
-      <h1 className="text-3xl font-bold mb-2">Search and Review Movies</h1>
-      <h2 className="text-xl font-semibold mb-6 text-gray-600">By Genres</h2>
+      <h2 className="text-3xl font-bold mb-2">Search and Review Movies</h2>
+      <h2 className="text-2xl font-bold mb-2">Click on any movie poster and add comments in the movie details page. Comments will be checked by AI and if the comment pass HuggingFace/TextModerator check it will be added to DB, else will be rejected</h2>
+      <h3 className="text-xl font-semibold mb-6 text-gray-600">By Genres</h3>
 
       {/* ---------------- Genre Pills ---------------- */}
       <div className="flex flex-wrap gap-3 mb-6">
