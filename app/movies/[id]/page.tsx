@@ -33,7 +33,7 @@ export default async function MovieDetailsPage({ params }: PageProps) {
   const client = await clientPromise;
   const db = client.db("sample_mflix");
 
-  let movie: Movie | null = null;
+  let movie: any | null = null;
 
   try {
     movie = await db.collection("movies").findOne({ _id: new ObjectId(id) });

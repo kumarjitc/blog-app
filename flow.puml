@@ -1,0 +1,77 @@
+@startuml
+autonumber
+skinparam actorStyle awesome
+
+actor User
+
+box Movie App #84CAE8
+    participant "Frontend (Next.js)" as Frontend
+    participant "Next.js API" as API
+end box
+
+participant "Text Moderation API" as Moderation #F2AC77
+database "MongoDB" as DB #E477F2
+
+== Genre Selection & Movie List ==
+User -> Frontend: Open Genres page
+Frontend -> API: GET /api/genres
+API -> DB: Fetch unique genres with counts
+DB --> API: Return genres
+API --> Frontend: Send genres
+Frontend -> User: Display genre pills
+
+User -> Frontend: Select genre
+Frontend -> API: GET /api/movies?genre=X&page=1
+API -> DB: Fetch movies filtered by genre
+DB --> API: Return movies
+API --> Frontend: Send movies
+Frontend -> User: Display movie posters
+
+== Infinite Scroll ==
+User -> Frontend: Scroll to bottom
+Frontend -> API: GET /api/movies?genre=X&page=N
+API -> DB: Fetch next page of movies
+DB --> API: Return movies
+API --> Frontend: Send movies
+Frontend -> User: Append movies to grid
+
+== Movie Details ==
+User -> Frontend: Click on movie poster
+Frontend -> API: GET /api/movies/:id
+API -> DB: Fetch movie by _id
+DB --> API: Return movie details
+API --> Frontend: Send movie data
+Frontend -> User: Display movie details
+
+Frontend -> API: GET /api/comments?movieId=:id
+API -> DB: Fetch comments for movie
+DB --> API: Return comments
+API --> Frontend: Send comments
+Frontend -> User: Display comments list
+
+== Add Comment ==
+User -> Frontend: Open comment modal
+User -> Frontend: Type comment
+User -> Frontend: Click submit
+Frontend -> API: POST /api/comments { movieId, text }
+API -> Moderation: Check text for safety
+Moderation --> API: Return { isSafe, reason, message }
+
+alt Comment is safe
+    API -> DB: Save comment
+    DB --> API: Comment saved
+    API --> Frontend: Success response
+    Frontend -> User: Show success message
+else Comment is unsafe
+    API --[#FA3A20]> Frontend: Error response with reason
+    Frontend -> User: Show error, keep modal open
+end
+
+legend right
+    |Colour   | Layer            |
+    |<#84CAE8>| Application Layer|
+    |<#F2AC77>| AI Layer         |
+    |<#E477F2>| Database Later   |
+endlegend
+
+@enduml

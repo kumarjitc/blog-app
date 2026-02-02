@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     const guardrails = await Client.connect("duchaba/Friendly_Text_Moderation");
-    const toxicity = await guardrails.predict("/fetch_toxicity_level", { 		
+    const toxicity: any = await guardrails.predict("/fetch_toxicity_level", { 		
             msg: text, 		
             safer: 0.005, 
     });
