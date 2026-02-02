@@ -47,7 +47,7 @@ export default async function MovieDetailsPage({ params }: PageProps) {
     <main className="p-8">
       <BackToGenres /> {/* ← Added back button */}
       <h2 className="text-3xl font-bold mb-2">Movie Details and Add Comments</h2>
-      <h2 className="text-2xl font-bold mb-2">Click on any movie poster and add comments in the movie details page. Comments will be checked by AI and if the comment pass HuggingFace/TextModerator check it will be added to DB, else will be rejected</h2>
+      <h2 className="text-2xl font-bold mb-2">Add comments to the movie. Comments will be checked by AI and if the comment pass HuggingFace/TextModerator check it will be added to DB, else will be rejected</h2>
       <div className="flex flex-col md:flex-row gap-6">
         {/* Poster */}
         {movie.poster ? (
